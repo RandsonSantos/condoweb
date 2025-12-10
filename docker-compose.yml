@@ -1,0 +1,52 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: condominio
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - condoweb-net
+
+  web:
+    build: ./backend
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/condominio
+      - SECRET_KEY=troque_isto
+      - JWT_SECRET_KEY=troque_isto_jwt
+      - ESP32_BASE_URL=http://192.168.0.120
+      - ESP32_TOKEN=
+    ports:
+      - "5000:5000"
+    networks:
+      - condoweb-net
+
+  nginx:
+    image: nginx:stable
+    ports:
+      - "8080:80"
+    volumes:
+      - ./hls:/usr/share/nginx/html/streams:rw
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - condoweb-net
+
+  streamer:
+    image: jrottenberg/ffmpeg:4.3-alpine
+    volumes:
+      - ./hls:/tmp/hls
+    networks:
+      - condoweb-net
+    command: ["-version"]
+
+volumes:
+  pgdata:
+
+networks:
+  condoweb-net:
+    driver: bridge
